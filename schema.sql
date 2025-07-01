@@ -1,5 +1,5 @@
 -- ####################################################################
--- # WhatsApp SaaS Platform - PostgreSQL Schema
+-- # WhatsApp SaaS Platform - PostgreSQL Schema (Corrected & Complete)
 -- ####################################################################
 
 -- Enable UUID extension if it's not already enabled
@@ -43,7 +43,7 @@ CREATE TABLE user_tool_permissions (
     PRIMARY KEY (user_id, tool_id)
 );
 
--- ========= Instances Table =========
+-- ========= Instances Table (Corrected) =========
 -- Stores data for each WhatsApp instance created by a user.
 CREATE TABLE instances (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -55,6 +55,8 @@ CREATE TABLE instances (
     webhook_url TEXT,
     service_id INTEGER NOT NULL REFERENCES api_services(id),
     owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    owner_jid TEXT, -- Added for storing the real WhatsApp ID
+    profile_name TEXT, -- Added for storing the WhatsApp profile name
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
