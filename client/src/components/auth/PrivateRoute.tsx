@@ -3,10 +3,15 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const PrivateRoute = () => {
-  const { isAuthenticated } = useAuth(); // Use our hook to check auth status
+  const { isAuthenticated, isLoading } = useAuth(); // <-- Get the new isLoading state
 
-  // If the user is authenticated, render the child route content using <Outlet />.
-  // Otherwise, redirect them to the /login page.
+  // If we are still checking for a session, show a loading message.
+  if (isLoading) {
+    return <div>Loading session...</div>;
+  }
+
+  // If we are done loading and the user is authenticated, show the page.
+  // Otherwise, redirect to login.
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
 };
 
