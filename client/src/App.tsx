@@ -4,8 +4,9 @@ import './App.css';
 import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
-import { useAuth } from './hooks/useAuth'; // <-- Import useAuth
-import PrivateRoute from './components/auth/PrivateRoute'; // <-- Import PrivateRoute
+import { useAuth } from './hooks/useAuth';
+import PrivateRoute from './components/auth/PrivateRoute';
+import WhatsAppConnectionPage from './pages/tools/WhatsAppConnectionPage'; // <-- Import the new tool page
 
 // A placeholder for the 404 page
 const NotFoundPage = () => (
@@ -51,6 +52,8 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<UserDashboardPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
+              {/* Add the new route for our first tool */}
+              <Route path="/tools/whatsapp-connections" element={<WhatsAppConnectionPage />} />
             </Route>
 
             {/* Catch-all for unknown paths */}

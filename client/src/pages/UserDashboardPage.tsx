@@ -1,64 +1,65 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import apiClient from '../api/apiClient';
-import { Instance } from '../types';
-import { InstanceManager } from '../components/user/InstanceManager';
-import { listenForEvent, stopListeningForEvent } from '../services/socket';
+import { Tool } from '../types';
+import ToolCard from '../components/dashboard/ToolCard';
 
 const UserDashboardPage = () => {
-  const [instances, setInstances] = useState<Instance[]>([]);
+  const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchInstances = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await apiClient.get<Instance[]>('/instances/sync');
-      setInstances(response.data);
-    } catch (err) {
-      setError('Failed to fetch instances.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchInstances();
-  }, [fetchInstances]);
-
-  useEffect(() => {
-    const handleStatusUpdate = (data: { instanceName: string; status: string }) => {
-      console.log('[socket]: Received status update on dashboard page:', data);
-      
-      // --- FIX: Use a functional update to avoid stale state ---
-      setInstances(currentInstances =>
-        currentInstances.map(inst =>
-          inst.system_name === data.instanceName ? { ...inst, status: data.status } : inst
-        )
-      );
+    const fetchPermittedTools = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        // Fetch the user's permitted tools from our new backend endpoint
+        const response = await apiClient.get<Tool[]>('/permissions/my-permissions');
+        setTools(response.data);
+      } catch (err) {
+        setError('Failed to fetch your available tools. Please try again later.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    listenForEvent('instance_status_update', handleStatusUpdate);
-
-    return () => {
-      stopListeningForEvent('instance_status_update');
-    };
-  }, []);
-
+    fetchPermittedTools();
+  }, []); // The empty dependency array ensures this effect runs only once on mount
 
   if (loading) {
-    return <div>Loading instances...</div>;
+    return <div>Loading your tools...</div>;
   }
 
   if (error) {
     return <div style={{ color: 'red' }}>{error}</div>;
   }
 
+  const dashboardStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    padding: '1rem',
+  };
+
   return (
     <div>
       <h2>User Dashboard</h2>
-      <InstanceManager instances={instances} onInstanceUpdate={fetchInstances} />
+      <p>Select a tool from the list below to get started.</p>
+      
+      {tools.length > 0 ? (
+        <div style={dashboardStyle}>
+          {tools.map((tool) => (
+            <ToolCard key={tool.id} tool={tool} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f5f5f5' }}>
+          <p>You do not have permission to use any tools yet.</p>
+          <p>Please contact an administrator to get access.</p>
+        </div>
+      )}
     </div>
   );
 };

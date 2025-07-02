@@ -1,3 +1,4 @@
+
 // This file will contain shared type definitions used across the frontend.
 
 /**
@@ -13,7 +14,6 @@ export interface User {
  * Represents a single WhatsApp instance record.
  * This matches the structure we defined in the backend model.
  */
-// In client/src/types.ts
 export interface Instance {
   id: string; 
   ownerId: string;
@@ -22,7 +22,17 @@ export interface Instance {
   createdAt: Date;
   instanceDisplayName: string;
   phoneNumber: string;
-  system_name: string; // <-- FIX: Added the missing property
+  system_name: string;
   owner_jid?: string;
   profile_name?: string;
+}
+
+/**
+ * NEW: Represents a single tool the user has permission to access.
+ * This matches the structure returned by the /api/permissions/my-permissions endpoint.
+ */
+export interface Tool {
+  id: number;
+  name: string;
+  description: string;
 }

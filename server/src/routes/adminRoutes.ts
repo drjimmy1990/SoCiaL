@@ -1,15 +1,28 @@
-import { Router } from 'express';
-import { createUser } from '../controllers/adminController';
+
+import { Router, Request, Response, NextFunction } from 'express';
+import { 
+  createUser,
+  getAllUsers,
+  getUserPermissions,
+  updateUserPermissions
+} from '../controllers/adminController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { adminMiddleware } from '../middleware/adminMiddleware';
 
 const router = Router();
 
-// Define the route for creating a new user.
-// This route is protected by two middleware functions.
-// 1. authMiddleware: Checks if the user is logged in.
-// 2. adminMiddleware: Checks if the logged-in user has the 'admin' role.
-// Only if both checks pass, the request will be handled by createUser.
-router.post('/users', authMiddleware, adminMiddleware, createUser);
+// Define a type for our route handlers for clarity
+type RouteHandler = (req: Request, res: Response, next?: NextFunction) => void;
+
+// Apply auth and admin middleware to all routes in this file.
+router.use(authMiddleware as RouteHandler, adminMiddleware as RouteHandler);
+
+// --- User management routes ---
+router.post('/users', createUser as RouteHandler);
+router.get('/users', getAllUsers as RouteHandler);
+
+// --- User permission management routes ---
+router.get('/users/:userId/permissions', getUserPermissions as RouteHandler);
+router.post('/users/:userId/permissions', updateUserPermissions as RouteHandler);
 
 export default router;
