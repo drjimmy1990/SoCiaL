@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import for redirection
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { User } from '../../types';
-import { useAuth } from '../../hooks/useAuth'; // <-- IMPORT our custom hook
+import { useAuth } from '../../hooks/useAuth';
+
+// --- NEW MUI IMPORTS ---
+import { Box, TextField, Button, Typography, CircularProgress } from '@mui/material';
+// --- END OF MUI IMPORTS ---
 
 const LoginForm = () => {
   const [username, setUsername] = useState('');
@@ -10,8 +14,8 @@ const LoginForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate(); // Hook for programmatic navigation
-  const { login } = useAuth(); // <-- USE our custom hook to get the login function
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -23,13 +27,8 @@ const LoginForm = () => {
         username,
         password,
       });
-
-      // --- This is the major change ---
-      // Instead of an alert, we call our global login function...
       login(response.data.user, response.data.token);
-      // ...and then redirect the user to their dashboard.
       navigate('/dashboard');
-
     } catch (err: any) {
       console.error('Login failed:', err.response?.data?.message || 'An unknown error occurred.');
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
@@ -38,58 +37,57 @@ const LoginForm = () => {
     }
   };
 
-  const formStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    width: '300px',
-    margin: '0 auto',
-  };
-
-  const inputStyle: React.CSSProperties = {
-    marginBottom: '10px',
-    padding: '8px',
-    fontSize: '1rem',
-  };
-
-  const buttonStyle: React.CSSProperties = {
-    padding: '10px',
-    fontSize: '1rem',
-    cursor: 'pointer',
-  };
-
-  const errorStyle: React.CSSProperties = {
-    color: 'red',
-    marginTop: '10px',
-  };
-
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
-      <label htmlFor="username">Username</label>
-      <input
+    <Box
+      component="form"
+      onSubmit={handleSubmit}
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%',
+        maxWidth: '400px',
+        margin: '0 auto',
+      }}
+    >
+      <TextField
         id="username"
-        type="text"
+        label="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         required
-        style={inputStyle}
+        margin="normal"
+        fullWidth
+        autoFocus
       />
       
-      <label htmlFor="password">Password</label>
-      <input
+      <TextField
         id="password"
+        label="Password"
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
-        style={inputStyle}
+        margin="normal"
+        fullWidth
       />
       
-      <button type="submit" disabled={loading} style={buttonStyle}>
-        {loading ? 'Logging in...' : 'Login'}
-      </button>
+      {error && (
+        <Typography color="error" variant="body2" sx={{ mt: 1, mb: 1 }}>
+          {error}
+        </Typography>
+      )}
 
-      {error && <p style={errorStyle}>{error}</p>}
-    </form>
+      <Button 
+        type="submit" 
+        disabled={loading} 
+        variant="contained" 
+        size="large"
+        sx={{ mt: 3, mb: 2, width: '100%' }}
+      >
+        {loading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
+      </Button>
+    </Box>
   );
 };
 

@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 
-// Define the type for a campaign object returned by our API
+// --- NEW MUI IMPORTS ---
+import {
+  Box, Button, Container, Typography, Paper, TableContainer, Table, TableHead,
+  TableRow, TableCell, TableBody, Chip, CircularProgress, Link
+} from '@mui/material';
+// --- END OF MUI IMPORTS ---
+
 interface Campaign {
   id: string;
   name: string;
@@ -33,83 +39,78 @@ const CampaignsDashboardPage = () => {
         setLoading(false);
       }
     };
-
     fetchCampaigns();
   }, []);
 
   const getStatusChip = (status: string) => {
-    const baseStyle: React.CSSProperties = {
-      padding: '4px 8px',
-      borderRadius: '12px',
-      fontWeight: 500,
-      fontSize: '0.8rem',
-      textTransform: 'capitalize',
+    const colorMap: { [key: string]: "primary" | "secondary" | "success" | "error" | "warning" | "info" | "default" } = {
+      draft: 'default',
+      running: 'info',
+      paused: 'warning',
+      completed: 'success',
+      stopped: 'error',
+      failed: 'error',
     };
-    const statusStyles: { [key: string]: React.CSSProperties } = {
-      draft: { backgroundColor: '#e0e0e0', color: '#333' },
-      running: { backgroundColor: '#e3f2fd', color: '#1e88e5' },
-      paused: { backgroundColor: '#fff8e1', color: '#fbc02d' },
-      completed: { backgroundColor: '#e8f5e9', color: '#388e3c' },
-      stopped: { backgroundColor: '#fbe9e7', color: '#d84315' },
-      failed: { backgroundColor: '#ffcdd2', color: '#c62828' },
-    };
-    return <span style={{ ...baseStyle, ...statusStyles[status] }}>{status}</span>;
+    return <Chip label={status} color={colorMap[status] || 'default'} size="small" sx={{textTransform: 'capitalize'}} />;
   };
 
-  if (loading) return <div>Loading campaigns...</div>;
-  if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
+  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
+  if (error) return <Typography color="error" align="center">Error: {error}</Typography>;
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <div>
-          <Link to="/dashboard">{'< Back to Dashboard'}</Link>
-          <h2 style={{ marginTop: '0.5rem' }}>Campaign Manager</h2>
-        </div>
-        <button onClick={() => navigate('/tools/campaigns/new')} style={{ padding: '10px 15px', fontSize: '1rem' }}>
+    <Container maxWidth="lg">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box>
+          <Link component={RouterLink} to="/dashboard">{'< Back to Dashboard'}</Link>
+          <Typography variant="h4" component="h1" gutterBottom sx={{mt: 1}}>
+            Campaign Manager
+          </Typography>
+        </Box>
+        <Button variant="contained" onClick={() => navigate('/tools/campaigns/new')}>
           + Create New Campaign
-        </button>
-      </div>
+        </Button>
+      </Box>
 
-      <div style={{ border: '1px solid #ccc', borderRadius: '8px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #ccc', textAlign: 'left' }}>
-              <th style={{ padding: '12px' }}>Campaign Name</th>
-              <th style={{ padding: '12px' }}>Instance</th>
-              <th style={{ padding: '12px' }}>Progress</th>
-              <th style={{ padding: '12px' }}>Status</th>
-              <th style={{ padding: '12px' }}>Created</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableContainer component={Paper}>
+        <Table sx={{ minWidth: 650 }} aria-label="campaigns table">
+          <TableHead>
+            <TableRow>
+              <TableCell>Campaign Name</TableCell>
+              <TableCell>Instance</TableCell>
+              <TableCell>Progress</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Created</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {campaigns.length > 0 ? (
               campaigns.map((campaign) => (
-                <tr
+                <TableRow
                   key={campaign.id}
                   onClick={() => navigate(`/tools/campaigns/${campaign.id}`)}
-                  style={{ cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f9f9f9')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  hover
+                  sx={{ cursor: 'pointer' }}
                 >
-                  <td style={{ padding: '12px', fontWeight: 500 }}>{campaign.name}</td>
-                  <td style={{ padding: '12px' }}>{campaign.instance_name}</td>
-                  <td style={{ padding: '12px' }}>{campaign.sent_recipients} / {campaign.total_recipients}</td>
-                  <td style={{ padding: '12px' }}>{getStatusChip(campaign.status)}</td>
-                  <td style={{ padding: '12px' }}>{new Date(campaign.created_at).toLocaleDateString()}</td>
-                </tr>
+                  <TableCell component="th" scope="row">
+                    <Typography variant="subtitle1" fontWeight="bold">{campaign.name}</Typography>
+                  </TableCell>
+                  <TableCell>{campaign.instance_name}</TableCell>
+                  <TableCell>{campaign.sent_recipients} / {campaign.total_recipients}</TableCell>
+                  <TableCell>{getStatusChip(campaign.status)}</TableCell>
+                  <TableCell>{new Date(campaign.created_at).toLocaleDateString()}</TableCell>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
-                  You haven't created any campaigns yet.
-                </td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                  <Typography variant="subtitle1">You haven't created any campaigns yet.</Typography>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Container>
   );
 };
 

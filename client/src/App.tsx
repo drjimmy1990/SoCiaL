@@ -1,25 +1,27 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Link as RouterLink, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import { useAuth } from './hooks/useAuth';
 import PrivateRoute from './components/auth/PrivateRoute';
 import WhatsAppConnectionPage from './pages/tools/WhatsAppConnectionPage';
-// --- NEW IMPORTS ---
 import CampaignsDashboardPage from './pages/tools/CampaignsDashboardPage';
 import CreateCampaignPage from './pages/tools/CreateCampaignPage';
 import CampaignDetailsPage from './pages/tools/CampaignDetailsPage';
 
+// --- THIS IS THE FIX: Removed 'Link' from this import statement ---
+import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
 
-
-// A placeholder for the 404 page
 const NotFoundPage = () => (
-  <div>
-    <h2>404 - Page Not Found</h2>
-    <Link to="/">Go to Home</Link>
-  </div>
+  <Container>
+    <Typography variant="h4" component="h1" gutterBottom>
+      404 - Page Not Found
+    </Typography>
+    <Button component={RouterLink} to="/" variant="contained">
+      Go to Home
+    </Button>
+  </Container>
 );
 
 function App() {
@@ -27,25 +29,40 @@ function App() {
 
   return (
     <Router>
-      <div className="App">
-        <header style={{ padding: '1rem', backgroundColor: '#282c34', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1>WhatsApp Tools</h1>
-          <nav>
-            {isAuthenticated ? (
-              <>
-                <span style={{ marginRight: '1rem' }}>Welcome, {user?.username}!</span>
-                {user?.role === 'admin' && (
-                  <Link to="/admin" style={{ color: 'white', marginRight: '1rem' }}>Admin Dashboard</Link>
-                )}
-                <Link to="/dashboard" style={{ color: 'white', marginRight: '1rem' }}>My Dashboard</Link>
-                <button onClick={logout}>Logout</button>
-              </>
-            ) : (
-              <Link to="/login" style={{ color: 'white' }}>Login</Link>
-            )}
-          </nav>
-        </header>
-        <main style={{ padding: '1rem' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'background.default' }}>
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              WhatsApp Tools
+            </Typography>
+            <nav>
+              {isAuthenticated ? (
+                <>
+                  <Typography component="span" sx={{ mr: 2 }}>
+                    Welcome, {user?.username}!
+                  </Typography>
+                  {user?.role === 'admin' && (
+                    <Button component={RouterLink} to="/admin" color="inherit">
+                      Admin Dashboard
+                    </Button>
+                  )}
+                  <Button component={RouterLink} to="/dashboard" color="inherit">
+                    My Dashboard
+                  </Button>
+                  <Button onClick={logout} color="inherit">
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Button component={RouterLink} to="/login" color="inherit">
+                  Login
+                </Button>
+              )}
+            </nav>
+          </Toolbar>
+        </AppBar>
+
+        <Container component="main" sx={{ py: 4, flexGrow: 1 }}>
           <Routes>
             <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
             <Route path="/login" element={<LoginPage />} />
@@ -53,19 +70,16 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<UserDashboardPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
-              
-              {/* --- Tool Routes --- */}
               <Route path="/tools/whatsapp-connections" element={<WhatsAppConnectionPage />} />
               <Route path="/tools/campaigns" element={<CampaignsDashboardPage />} />
               <Route path="/tools/campaigns/new" element={<CreateCampaignPage />} />
               <Route path="/tools/campaigns/:id" element={<CampaignDetailsPage />} />
-
             </Route>
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </main>
-      </div>
+        </Container>
+      </Box>
     </Router>
   );
 }

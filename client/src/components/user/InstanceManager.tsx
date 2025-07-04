@@ -1,7 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Instance } from '../../types';
 import apiClient from '../../api/apiClient';
-import { listenForEvent, stopListeningForEvent } from '../../services/socket';
+
+// --- NEW MUI IMPORTS ---
+import {
+  Box, Button, Card, CardContent, CardActions, Typography, Dialog, DialogTitle,
+  DialogContent, DialogActions, TextField, CircularProgress
+} from '@mui/material';
+// --- END OF MUI IMPORTS ---
 
 interface InstanceManagerProps {
   instances: Instance[];
@@ -9,32 +15,19 @@ interface InstanceManagerProps {
 }
 
 export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onInstanceUpdate }) => {
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  // State for the "Create Instance" dialog
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState('');
   const [newPhoneNumber, setNewPhoneNumber] = useState('');
   
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // State for the QR Code dialog
+  const [openQrDialog, setOpenQrDialog] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [instanceForQr, setInstanceForQr] = useState<Instance | null>(null);
 
-
-  useEffect(() => {
-    const handleStatusUpdate = (data: { instanceName: string; status: string }) => {
-      if (instanceForQr && instanceForQr.system_name === data.instanceName && (data.status === 'open' || data.status === 'connected')) {
-        setQrCode(null);
-        setInstanceForQr(null);
-        alert(`Instance "${data.instanceName}" connected successfully!`);
-      }
-    };
-
-    listenForEvent('instance_status_update', handleStatusUpdate);
-
-    return () => {
-      stopListeningForEvent('instance_status_update');
-    };
-  }, [instanceForQr]);
-
+  // General UI state
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreateInstance = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +40,8 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
       });
       setInstanceForQr(response.data.instance);
       setQrCode(response.data.qrCodeBase64);
-      setShowCreateForm(false);
+      setOpenQrDialog(true); // Open QR dialog on success
+      setOpenCreateDialog(false); // Close the create dialog
       setNewInstanceName('');
       setNewPhoneNumber('');
       onInstanceUpdate();
@@ -59,10 +53,10 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
   };
 
   const handleDeleteInstance = async (instanceId: string) => {
-    if (window.confirm(`Are you sure you want to delete this instance?`)) {
+    // We'll replace window.confirm later with a nicer dialog
+    if (window.confirm('Are you sure you want to delete this instance?')) {
       try {
         await apiClient.delete(`/instances/${instanceId}`);
-        alert('Instance deleted successfully.');
         onInstanceUpdate();
       } catch (err: any) {
         alert(err.response?.data?.message || 'Failed to delete instance.');
@@ -75,85 +69,100 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
       const response = await apiClient.get(`/instances/${instance.id}/connect`);
       setInstanceForQr(instance);
       setQrCode(response.data.qrCodeBase64);
+      setOpenQrDialog(true);
     } catch (err: any) {
        alert(err.response?.data?.message || 'Failed to get QR Code.');
     }
   };
 
-  const handleGetStatus = async (instanceId: string) => {
-    try {
-      const response = await apiClient.get(`/instances/${instanceId}/status`);
-      const status = response.data.instance?.state || 'unknown';
-      alert(`Instance status: ${status}`);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to get status.');
-    }
-  };
-  
-  const cardStyle: React.CSSProperties = { border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem', borderRadius: '5px' };
-  const buttonStyle: React.CSSProperties = { cursor: 'pointer', marginRight: '0.5rem' };
-  const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000};
-  const modalContentStyle: React.CSSProperties = { backgroundColor: 'white', padding: '2rem', textAlign: 'center', borderRadius: '5px'};
-
   return (
-    <div>
-      {qrCode && (
-        <div style={modalOverlayStyle} onClick={() => setQrCode(null)}>
-          <div style={modalContentStyle}>
-            <h3>Scan with WhatsApp</h3>
-            <img src={qrCode} alt="WhatsApp QR Code" />
-            {/* FIX: Changed 'display_name' to 'instanceDisplayName' */}
-            <p>Connecting instance: <strong>{instanceForQr?.instanceDisplayName}</strong></p>
-            <p>Click anywhere to close.</p>
-          </div>
-        </div>
+    <Box>
+      {/* --- Main "Create" Button --- */}
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-start' }}>
+        <Button variant="contained" onClick={() => setOpenCreateDialog(true)}>
+          + Create New Instance
+        </Button>
+      </Box>
+      
+      {/* --- List of Instances --- */}
+      {instances.length === 0 ? (
+        <Typography>You have no instances yet.</Typography>
+      ) : (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+          {instances.map((inst) => (
+            <Card key={inst.id} sx={{ minWidth: 275, mb: 2 }}>
+              <CardContent>
+                <Typography variant="h5" component="div">
+                  {inst.instanceDisplayName}
+                </Typography>
+                <Typography sx={{ mb: 1.5 }} color="text.secondary">
+                  Status: <strong>{inst.status}</strong>
+                </Typography>
+                <Typography variant="body2">
+                  Phone: {inst.owner_jid ? inst.owner_jid.split('@')[0] : 'N/A'}
+                  <br />
+                  ID: {inst.system_name}
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <Button size="small" variant="outlined" onClick={() => handleConnect(inst)}>Connect (QR)</Button>
+                <Button size="small" color="error" onClick={() => handleDeleteInstance(inst.id)}>Delete</Button>
+              </CardActions>
+            </Card>
+          ))}
+        </Box>
       )}
 
-      <div style={{ marginBottom: '2rem' }}>
-        <button onClick={() => setShowCreateForm(!showCreateForm)}>
-          {showCreateForm ? 'Cancel' : '+ Create New Instance'}
-        </button>
-        {showCreateForm && (
-          <form onSubmit={handleCreateInstance} style={{ marginTop: '1rem', ...cardStyle }}>
-            <h3>New Instance Details</h3>
-            <input
+      {/* --- Create Instance Dialog (Modal) --- */}
+      <Dialog open={openCreateDialog} onClose={() => setOpenCreateDialog(false)}>
+        <DialogTitle>Create New Instance</DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={handleCreateInstance} sx={{ mt: 1 }}>
+            <TextField
+              autoFocus
+              margin="dense"
+              id="name"
+              label="Instance Name (e.g., My Shop)"
               type="text"
-              placeholder="Instance Name (e.g., My Shop)"
+              fullWidth
               value={newInstanceName}
               onChange={(e) => setNewInstanceName(e.target.value)}
               required
-              style={{ width: '95%', padding: '8px', marginBottom: '10px' }}
             />
-            <input
+            <TextField
+              margin="dense"
+              id="phone"
+              label="WhatsApp Number (e.g., 15551234567)"
               type="text"
-              placeholder="WhatsApp Number (e.g., 15551234567)"
+              fullWidth
               value={newPhoneNumber}
               onChange={(e) => setNewPhoneNumber(e.target.value)}
               required
-              style={{ width: '95%', padding: '8px', marginBottom: '10px' }}
             />
-            <button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Create & Get QR Code'}</button>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-          </form>
-        )}
-      </div>
+            {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCreateDialog(false)}>Cancel</Button>
+          <Button onClick={handleCreateInstance} variant="contained" disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'Create & Get QR'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      <h3>My Instances</h3>
-      {instances.length === 0 ? (
-        <p>You have no instances yet.</p>
-      ) : (
-        instances.map((inst) => (
-          <div key={inst.id} style={cardStyle}>
-            <h4>{inst.instanceDisplayName}</h4>
-            <p>Status: <strong>{inst.status}</strong></p>
-            <p>Phone: <strong>{inst.owner_jid ? inst.owner_jid.split('@')[0] : 'N/A'}</strong></p>
-            <p>ID: {inst.system_name}</p>
-            <button onClick={() => handleGetStatus(inst.id)} style={buttonStyle}>Get Status</button>
-            <button onClick={() => handleConnect(inst)} style={buttonStyle}>Connect (QR)</button>
-            <button onClick={() => handleDeleteInstance(inst.id)} style={{...buttonStyle, backgroundColor: '#ffdddd' }}>Delete</button>
-          </div>
-        ))
-      )}
-    </div>
+      {/* --- QR Code Dialog (Modal) --- */}
+      <Dialog open={openQrDialog} onClose={() => setOpenQrDialog(false)}>
+        <DialogTitle>Scan with WhatsApp</DialogTitle>
+        <DialogContent sx={{ textAlign: 'center' }}>
+          {qrCode && <img src={`data:image/png;base64,${qrCode}`} alt="WhatsApp QR Code" />}
+          <Typography sx={{ mt: 2 }}>
+            Connecting instance: <strong>{instanceForQr?.instanceDisplayName}</strong>
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenQrDialog(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
