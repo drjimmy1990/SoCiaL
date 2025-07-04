@@ -316,7 +316,34 @@ These endpoints are for administrative tasks and are strictly protected.
     }
     ```
 
+#### `GET /instances`  *(<-- NEW)*
+-   **Description:** Retrieves a list of *all* instances across the entire system, including the username of the owner.
+-   **Protection:** `Admin Only`
+-   **Success Response (200 OK):**
+    ```json
+    [
+      {
+        "id": "uuid-for-instance-1",
+        "display_name": "My First Instance",
+        "status": "open",
+        "webhook_url": "http://example.com/hook",
+        "owner_username": "testuser"
+      }
+    ]
+    ```
+
+#### `POST /instances/:instanceId/config`  *(<-- NEW)*
+-   **Description:** Updates the configuration for any instance in the system. Can update one or both properties.
+-   **Protection:** `Admin Only`
+-   **Request Body:**
+    ```json
+    {
+      "webhookUrl": "http://new-url.com/hook"
+    }
+    ```
+
 ---
+
 
 ### **Instances (`/api/instances`)**
 
