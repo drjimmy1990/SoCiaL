@@ -1,4 +1,3 @@
-
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 
@@ -7,7 +6,8 @@ import adminRoutes from './routes/adminRoutes';
 import instanceRoutes from './routes/instanceRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import toolRoutes from './routes/toolRoutes';
-import permissionRoutes from './routes/permissionRoutes'; // <-- Import the new permission routes
+import permissionRoutes from './routes/permissionRoutes';
+import campaignRoutes from './routes/campaignRoutes'; // <-- Import the new campaign routes
 
 const app: Express = express();
 
@@ -19,7 +19,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/instances', instanceRoutes);
 app.use('/api/tools', toolRoutes);
-app.use('/api/permissions', permissionRoutes); // <-- Register the new permission routes
+app.use('/api/permissions', permissionRoutes);
+app.use('/api/campaigns', campaignRoutes); // <-- Register the new campaign routes
 
 // Public Webhook Route
 app.use('/webhooks', webhookRoutes);

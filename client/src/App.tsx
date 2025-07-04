@@ -6,7 +6,13 @@ import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import { useAuth } from './hooks/useAuth';
 import PrivateRoute from './components/auth/PrivateRoute';
-import WhatsAppConnectionPage from './pages/tools/WhatsAppConnectionPage'; // <-- Import the new tool page
+import WhatsAppConnectionPage from './pages/tools/WhatsAppConnectionPage';
+// --- NEW IMPORTS ---
+import CampaignsDashboardPage from './pages/tools/CampaignsDashboardPage';
+import CreateCampaignPage from './pages/tools/CreateCampaignPage';
+import CampaignDetailsPage from './pages/tools/CampaignDetailsPage';
+
+
 
 // A placeholder for the 404 page
 const NotFoundPage = () => (
@@ -41,22 +47,21 @@ function App() {
         </header>
         <main style={{ padding: '1rem' }}>
           <Routes>
-            {/* If logged in, '/' redirects to dashboard, otherwise to login */}
             <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
-            
-            {/* Login page is always public */}
             <Route path="/login" element={<LoginPage />} />
             
-            {/* --- Protected Routes --- */}
-            {/* All routes nested inside PrivateRoute will require authentication */}
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<UserDashboardPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
-              {/* Add the new route for our first tool */}
+              
+              {/* --- Tool Routes --- */}
               <Route path="/tools/whatsapp-connections" element={<WhatsAppConnectionPage />} />
+              <Route path="/tools/campaigns" element={<CampaignsDashboardPage />} />
+              <Route path="/tools/campaigns/new" element={<CreateCampaignPage />} />
+              <Route path="/tools/campaigns/:id" element={<CampaignDetailsPage />} />
+
             </Route>
 
-            {/* Catch-all for unknown paths */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>

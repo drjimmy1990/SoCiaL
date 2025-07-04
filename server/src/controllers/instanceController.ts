@@ -23,7 +23,20 @@ export const getInstancesController = async (req: AuthenticatedRequest, res: Res
     return;
   }
   try {
-    const sql = 'SELECT id, display_name, system_name, phone_number, status, created_at, owner_jid, profile_name FROM instances WHERE owner_id = $1 ORDER BY created_at DESC';
+    const sql = `
+      SELECT 
+        id, 
+        display_name AS "instanceDisplayName", 
+        system_name, 
+        phone_number, 
+        status, 
+        created_at, 
+        owner_jid, 
+        profile_name 
+      FROM instances 
+      WHERE owner_id = $1 
+      ORDER BY created_at DESC
+    `;
     const { rows } = await query(sql, [loggedInUser.id]);
     res.status(200).json(rows);
   } catch (error) {
