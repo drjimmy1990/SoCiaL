@@ -10,8 +10,12 @@ import CampaignsDashboardPage from './pages/tools/CampaignsDashboardPage';
 import CreateCampaignPage from './pages/tools/CreateCampaignPage';
 import CampaignDetailsPage from './pages/tools/CampaignDetailsPage';
 
-// --- THIS IS THE FIX: Removed 'Link' from this import statement ---
 import { AppBar, Toolbar, Typography, Button, Container, Box } from '@mui/material';
+
+// --- NEW IMPORT ---
+import { Toaster } from 'react-hot-toast';
+// --- END OF NEW IMPORT ---
+
 
 const NotFoundPage = () => (
   <Container>
@@ -29,6 +33,20 @@ function App() {
 
   return (
     <Router>
+      {/* --- NEW: Add the Toaster component here --- */}
+      <Toaster 
+        position="top-center"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
+      {/* --- END OF NEW PART --- */}
+      
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'background.default' }}>
         <AppBar position="static">
           <Toolbar>

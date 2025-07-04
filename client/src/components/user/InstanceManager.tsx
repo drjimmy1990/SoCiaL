@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Instance } from '../../types';
 import apiClient from '../../api/apiClient';
 
-// --- NEW MUI IMPORTS ---
 import {
   Box, Button, Card, CardContent, CardActions, Typography, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, CircularProgress
 } from '@mui/material';
-// --- END OF MUI IMPORTS ---
+
+import toast from 'react-hot-toast';
 
 interface InstanceManagerProps {
   instances: Instance[];
@@ -15,17 +15,14 @@ interface InstanceManagerProps {
 }
 
 export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onInstanceUpdate }) => {
-  // State for the "Create Instance" dialog
   const [openCreateDialog, setOpenCreateDialog] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState('');
   const [newPhoneNumber, setNewPhoneNumber] = useState('');
   
-  // State for the QR Code dialog
   const [openQrDialog, setOpenQrDialog] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [instanceForQr, setInstanceForQr] = useState<Instance | null>(null);
 
-  // General UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,26 +37,27 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
       });
       setInstanceForQr(response.data.instance);
       setQrCode(response.data.qrCodeBase64);
-      setOpenQrDialog(true); // Open QR dialog on success
-      setOpenCreateDialog(false); // Close the create dialog
+      setOpenQrDialog(true);
+      setOpenCreateDialog(false);
       setNewInstanceName('');
       setNewPhoneNumber('');
       onInstanceUpdate();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create instance.');
+      toast.error(err.response?.data?.message || 'Failed to create instance.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteInstance = async (instanceId: string) => {
-    // We'll replace window.confirm later with a nicer dialog
     if (window.confirm('Are you sure you want to delete this instance?')) {
       try {
         await apiClient.delete(`/instances/${instanceId}`);
+        toast.success('Instance deleted successfully.');
         onInstanceUpdate();
       } catch (err: any) {
-        alert(err.response?.data?.message || 'Failed to delete instance.');
+        toast.error(err.response?.data?.message || 'Failed to delete instance.');
       }
     }
   };
@@ -71,20 +69,18 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
       setQrCode(response.data.qrCodeBase64);
       setOpenQrDialog(true);
     } catch (err: any) {
-       alert(err.response?.data?.message || 'Failed to get QR Code.');
+       toast.error(err.response?.data?.message || 'Failed to get QR Code.');
     }
   };
 
   return (
     <Box>
-      {/* --- Main "Create" Button --- */}
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'flex-start' }}>
         <Button variant="contained" onClick={() => setOpenCreateDialog(true)}>
           + Create New Instance
         </Button>
       </Box>
       
-      {/* --- List of Instances --- */}
       {instances.length === 0 ? (
         <Typography>You have no instances yet.</Typography>
       ) : (
@@ -119,25 +115,12 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
         <DialogContent>
           <Box component="form" onSubmit={handleCreateInstance} sx={{ mt: 1 }}>
             <TextField
-              autoFocus
-              margin="dense"
-              id="name"
-              label="Instance Name (e.g., My Shop)"
-              type="text"
-              fullWidth
-              value={newInstanceName}
-              onChange={(e) => setNewInstanceName(e.target.value)}
-              required
+              autoFocus margin="dense" id="name" label="Instance Name (e.g., My Shop)" type="text" fullWidth
+              value={newInstanceName} onChange={(e) => setNewInstanceName(e.target.value)} required
             />
             <TextField
-              margin="dense"
-              id="phone"
-              label="WhatsApp Number (e.g., 15551234567)"
-              type="text"
-              fullWidth
-              value={newPhoneNumber}
-              onChange={(e) => setNewPhoneNumber(e.target.value)}
-              required
+              margin="dense" id="phone" label="WhatsApp Number (e.g., 15551234567)" type="text" fullWidth
+              value={newPhoneNumber} onChange={(e) => setNewPhoneNumber(e.target.value)} required
             />
             {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
           </Box>
@@ -154,7 +137,11 @@ export const InstanceManager: React.FC<InstanceManagerProps> = ({ instances, onI
       <Dialog open={openQrDialog} onClose={() => setOpenQrDialog(false)}>
         <DialogTitle>Scan with WhatsApp</DialogTitle>
         <DialogContent sx={{ textAlign: 'center' }}>
-          {qrCode && <img src={`data:image/png;base64,${qrCode}`} alt="WhatsApp QR Code" />}
+          
+          {/* --- THIS IS THE FIX --- */}
+          {qrCode && <img src={qrCode} alt="WhatsApp QR Code" />}
+          {/* --- END OF FIX --- */}
+
           <Typography sx={{ mt: 2 }}>
             Connecting instance: <strong>{instanceForQr?.instanceDisplayName}</strong>
           </Typography>

@@ -8,7 +8,7 @@ import {
   Box, Button, Container, Typography, Paper, Link, CircularProgress,
   LinearProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip
 } from '@mui/material';
-
+import toast from 'react-hot-toast';
 
 interface Recipient {
   id: number;
@@ -77,7 +77,8 @@ const CampaignDetailsPage = () => {
   const handleControlClick = async (action: 'start' | 'pause' | 'stop') => {
     if (!campaignId) return;
     try {
-      await apiClient.post(`/campaigns/${campaignId}/control`, { action });
+      const response = await apiClient.post(`/campaigns/${campaignId}/control`, { action });
+      toast.success(response.data.message || `Campaign action '${action}' successful.`);
       setCampaign(prev => {
         if (!prev) return null; let newStatus: CampaignDetails['status'] = prev.status;
         if (action === 'start') newStatus = 'running';
@@ -85,7 +86,7 @@ const CampaignDetailsPage = () => {
         else if (action === 'stop') newStatus = 'stopped';
         return { ...prev, status: newStatus };
       });
-    } catch (err: any) { alert(err.response?.data?.message || `Failed to ${action} campaign.`); }
+    } catch (err: any) {toast.error(err.response?.data?.message || `Failed to ${action} campaign.`); }
   };
 
   const progressStats = useMemo(() => {

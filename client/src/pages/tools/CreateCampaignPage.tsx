@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 // --- END OF MUI IMPORTS ---
+import toast from 'react-hot-toast';
 
 
 interface MessagePart {
@@ -107,7 +108,7 @@ const CreateCampaignPage = () => {
     try {
       await apiClient.post('/campaigns', campaignData);
       // We'll replace this alert later with a toast notification
-      alert('Campaign created successfully as a draft!');
+      toast.success('Campaign created successfully as a draft!');
       navigate('/tools/campaigns');
     } catch (err: any) {
       console.error('Failed to create campaign', err);
