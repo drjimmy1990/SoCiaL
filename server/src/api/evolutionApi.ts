@@ -136,14 +136,13 @@ export const fetchAllEvolutionInstances = async () => {
 export const sendTextMessage = async (instanceName: string, number: string, text: string, typingDelay: number) => {
   const endpoint = `/message/sendText/${instanceName}`;
   try {
-    console.log(`[Evolution API] Sending text to ${number}`);
+    console.log(`[Evolution API] Sending text to ${number} with delay ${typingDelay}`);
+    // --- FIX: Moved 'delay' to the top level, as per the docs. Removed 'presence' as it's not in the docs. ---
     const response = await evolutionApiClient.post(endpoint, {
       number,
       text,
-      options: {
-        delay: typingDelay,
-        presence: 'composing' // Shows the "typing..." indicator
-      }
+      delay: typingDelay,
+      linkPreview: true, // You can make this configurable later if needed
     });
     return response.data;
   } catch (error) {
@@ -163,10 +162,9 @@ export const sendMediaMessage = async (
 ) => {
   const endpoint = `/message/sendMedia/${instanceName}`;
   
-  // Basic logic to determine mimetype and filename from URL
   const fileName = path.basename(new URL(url).pathname);
   const extension = path.extname(fileName).toLowerCase();
-  let mimetype = 'application/octet-stream'; // Default
+  let mimetype = 'application/octet-stream';
   if (mediaType === 'image') {
     if (extension === '.png') mimetype = 'image/png';
     else if (extension === '.jpg' || extension === '.jpeg') mimetype = 'image/jpeg';
@@ -178,15 +176,14 @@ export const sendMediaMessage = async (
 
   try {
     console.log(`[Evolution API] Sending ${mediaType} to ${number}`);
+    // --- FIX: Removed the wrapping 'mediaMessage' object. All parameters are at the top level. ---
     const response = await evolutionApiClient.post(endpoint, {
       number,
-      mediaMessage: {
-        mediatype: mediaType,
-        media: url,
-        caption: caption,
-        fileName: fileName,
-        mimetype: mimetype,
-      }
+      mediatype: mediaType,
+      mimetype,
+      caption: caption,
+      media: url,
+      fileName,
     });
     return response.data;
   } catch (error) {
@@ -205,6 +202,6 @@ export const checkWhatsappNumbers = async (instanceName: string, numbers: string
     return response.data as { jid: string, exists: boolean, number: string, name?: string }[];
   } catch (error) {
     handleApiError(error, endpoint);
-    return []; // Return empty array on failure to prevent crashes
+    return [];
   }
 };
