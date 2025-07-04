@@ -55,8 +55,8 @@ export const startCampaignProcessing = async (campaign: any) => {
         // --- END OF FIX ---
 
         // --- THIS IS THE NEW PART ---
-        const INTER_PART_DELAY_MIN_MS = 1; // 1 second
-        const INTER_PART_DELAY_MAX_MS = 2; // 2 seconds
+        const INTER_PART_DELAY_MIN_SECONDS = 1; // 1 second
+        const INTER_PART_DELAY_MAX_SECONDS = 2; // 2 seconds
         // --- END OF NEW PART ---
 
         // --- 2. Main Sending Loop ---
@@ -87,7 +87,7 @@ export const startCampaignProcessing = async (campaign: any) => {
                     } else if (messagePart.type === 'image' || messagePart.type === 'audio') {
                         await sendMediaMessage(campaign.instance_name, recipient.phone_number, messagePart.type, messagePart.url, finalContent);
                     }
-                    const interPartDelay = randomDelay(INTER_PART_DELAY_MIN_MS, INTER_PART_DELAY_MAX_MS);
+                    const interPartDelay = randomDelay(INTER_PART_DELAY_MIN_SECONDS, INTER_PART_DELAY_MAX_SECONDS);
                     await sleep(interPartDelay);
                 }
             } catch (err: any) {
