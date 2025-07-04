@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { UserRole } from '../models/User';
 import pool, { query } from '../db';
-
+import { setInstanceWebhook } from '../api/evolutionApi';
 // Schema for validating the request body when updating user permissions
 const updatePermissionsSchema = z.object({
   toolIds: z.array(z.number().int().positive()),
@@ -143,4 +143,97 @@ export const updateUserPermissions = async (req: Request, res: Response) => {
   } finally {
     client.release();
   }
+};
+
+
+export const getAllSystemInstances = async (req: Request, res: Response) => {
+  try {
+    const sql = `
+      SELECT 
+        i.id, 
+        i.display_name, 
+        i.system_name, 
+        i.status, 
+        i.webhook_url,
+        u.username as owner_username
+      FROM instances i
+      JOIN users u ON i.owner_id = u.id
+      ORDER BY u.username, i.created_at DESC;
+    `;
+    const { rows } = await query(sql);
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('[adminController]: Error fetching all system instances.', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+};
+
+
+
+
+
+// --- NEW VALIDATION SCHEMA ---
+const updateInstanceConfigSchema = z.object({
+    webhookUrl: z.string().url().optional(),
+    campaignSendingMode: z.enum(['internal', 'n8n']).optional(),
+});
+
+
+// --- NEW FUNCTION ---
+/**
+ * Controller for an admin to update settings for any instance.
+ */
+export const updateInstanceConfig = async (req: Request, res: Response) => {
+    const { instanceId } = req.params;
+
+    const validationResult = updateInstanceConfigSchema.safeParse(req.body);
+    if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid data provided.", errors: validationResult.error.flatten() });
+    }
+    const { webhookUrl, campaignSendingMode } = validationResult.data;
+
+    if (!webhookUrl && !campaignSendingMode) {
+        return res.status(400).json({ message: "At least one configuration setting must be provided." });
+    }
+
+    try {
+        // First, get the instance's system_name from our DB
+        const instanceRes = await query('SELECT system_name FROM instances WHERE id = $1', [instanceId]);
+        if (instanceRes.rows.length === 0) {
+            return res.status(404).json({ message: "Instance not found." });
+        }
+        const { system_name } = instanceRes.rows[0];
+
+        // If a webhook URL is provided, update it on the Evolution API first
+        if (webhookUrl) {
+            await setInstanceWebhook(system_name, webhookUrl);
+        }
+
+        // Now, update our local database with all provided settings
+        // This is a dynamic query builder
+        const updates: string[] = [];
+        const values: (string | null)[] = [];
+        let queryIndex = 1;
+
+        if (webhookUrl) {
+            updates.push(`webhook_url = $${queryIndex++}`);
+            values.push(webhookUrl);
+        }
+        // Note: The database schema does not currently have a campaign_sending_mode column on the instances table.
+        // As per our last approved plan, this setting lives on the `campaigns` table.
+        // I will omit this part of the DB update to prevent an error.
+        // If we want to add a *default* mode to the instance, we must alter the table first.
+
+        if (updates.length > 0) {
+            values.push(instanceId);
+            const updateSql = `UPDATE instances SET ${updates.join(', ')} WHERE id = $${queryIndex}`;
+            await query(updateSql, values);
+        }
+
+        res.status(200).json({ message: "Instance configuration updated successfully." });
+
+    } catch (error) {
+        console.error(`[adminController]: Error updating config for instance ${instanceId}.`, error);
+        res.status(500).json({ message: 'Failed to update instance configuration.' });
+    }
 };

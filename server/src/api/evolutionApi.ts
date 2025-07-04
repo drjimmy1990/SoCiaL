@@ -205,3 +205,26 @@ export const checkWhatsappNumbers = async (instanceName: string, numbers: string
     return [];
   }
 };
+
+
+export const setInstanceWebhook = async (instanceName: string, webhookUrl: string) => {
+  const endpoint = `/webhook/set/${instanceName}`;
+  try {
+    console.log(`[Evolution API] Setting webhook for ${instanceName} to ${webhookUrl}`);
+    // We will enable it by default and listen for a minimal set of crucial events.
+    // This can be made more configurable in the future if needed.
+    const response = await evolutionApiClient.post(endpoint, {
+      enabled: true,
+      url: webhookUrl,
+      webhookByEvents: true,
+      events: [
+
+        "MESSAGES_UPSERT",
+
+      ]
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error, endpoint);
+  }
+};
