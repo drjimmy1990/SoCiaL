@@ -54,6 +54,11 @@ export const startCampaignProcessing = async (campaign: any) => {
         const msPerChar = typingDelayMap[campaign.delay_speed as keyof typeof typingDelayMap] || 15; // Default to medium
         // --- END OF FIX ---
 
+        // --- THIS IS THE NEW PART ---
+        const INTER_PART_DELAY_MIN_MS = 1; // 1 second
+        const INTER_PART_DELAY_MAX_MS = 2; // 2 seconds
+        // --- END OF NEW PART ---
+
         // --- 2. Main Sending Loop ---
         for (const recipient of recipientsToSend) {
             const currentCampaignState = await query('SELECT status FROM campaigns WHERE id = $1', [campaign.id]);
@@ -63,10 +68,13 @@ export const startCampaignProcessing = async (campaign: any) => {
             }
 
             const contactInfo = validNumbersMap.get(recipient.phone_number);
+            
+            // --- THIS IS THE FIX: We define these variables outside the try block ---
+            let recipientStatus: 'sent' | 'failed' = 'sent';
             let logMessage = 'Sent successfully.';
+            // --- END OF FIX ---
 
             try {
-                // --- 3. Inner Loop: Send all message parts sequentially ---
                 for (const messagePart of campaign.message_content) {
                     let finalContent = messagePart.content || messagePart.caption || '';
                     if (campaign.use_placeholders && contactInfo?.name) {
@@ -74,28 +82,38 @@ export const startCampaignProcessing = async (campaign: any) => {
                     }
 
                     if (messagePart.type === 'text') {
-                        // --- THIS IS THE FIX: Use the mapped value ---
                         const typingDelay = finalContent.length * msPerChar;
                         await sendTextMessage(campaign.instance_name, recipient.phone_number, finalContent, typingDelay);
                     } else if (messagePart.type === 'image' || messagePart.type === 'audio') {
                         await sendMediaMessage(campaign.instance_name, recipient.phone_number, messagePart.type, messagePart.url, finalContent);
                     }
-                    await sleep(1500);
+                    const interPartDelay = randomDelay(INTER_PART_DELAY_MIN_MS, INTER_PART_DELAY_MAX_MS);
+                    await sleep(interPartDelay);
                 }
-                await query("UPDATE campaign_recipients SET status = 'sent', log_message = $1, sent_at = NOW() WHERE id = $2", [logMessage, recipient.id]);
-
             } catch (err: any) {
-                logMessage = err.response?.data?.message || 'Failed to send message.';
-                await query("UPDATE campaign_recipients SET status = 'failed', log_message = $1 WHERE id = $2", [logMessage, recipient.id]);
+                // --- THIS IS THE FIX: If an error occurs, we set the status and log message here ---
+                recipientStatus = 'failed';
+                logMessage = err.response?.data?.error || err.message || 'Failed to send message part.';
+                console.error(`[CampaignService] Failed to send to ${recipient.phone_number}: ${logMessage}`);
+                // --- END OF FIX ---
             }
 
-            emitToUser(campaign.owner_id, 'campaign_progress', { campaignId: campaign.id, updatedRecipients: [{id: recipient.id, status: 'sent', log: logMessage}] });
-            
-            const delay = randomDelay(campaign.delay_from_seconds, campaign.delay_to_seconds);
-            await sleep(delay);
+            // --- THIS IS THE FIX: The DB update and emit now happen AFTER the try...catch block ---
+            await query(
+                `UPDATE campaign_recipients SET status = $1, log_message = $2, sent_at = CASE WHEN $1 = 'sent' THEN NOW() ELSE NULL END WHERE id = $3`,
+                [recipientStatus, logMessage, recipient.id]
+            );
+
+            emitToUser(campaign.owner_id, 'campaign_progress', { 
+                campaignId: campaign.id, 
+                updatedRecipients: [{ id: recipient.id, status: recipientStatus, log_message: logMessage }] 
+            });
+            // --- END OF FIX ---
+
+            const mainDelay = randomDelay(campaign.delay_from_seconds, campaign.delay_to_seconds);
+            await sleep(mainDelay);
         }
 
-        // --- 5. Finalize Campaign (unchanged) ---
         await query("UPDATE campaigns SET status = 'completed' WHERE id = $1", [campaign.id]);
         emitToUser(campaign.owner_id, 'campaign_update', { campaignId: campaign.id, status: 'completed' });
         console.log(`[CampaignService] Finished processing campaign: ${campaign.id}`);
