@@ -6,6 +6,7 @@ dotenv.config();
 const config = {
   port: process.env.PORT || 5001,
   databaseUrl: process.env.DATABASE_URL,
+  testDatabaseUrl: process.env.TEST_DATABASE_URL, // <-- Add this line
   jwtSecret: process.env.JWT_SECRET || 'your-default-secret-key',
   evolution: {
     apiUrl: process.env.EVOLUTION_API_URL,

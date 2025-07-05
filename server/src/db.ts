@@ -1,22 +1,32 @@
 import { Pool } from 'pg';
 import config from './config';
 
-// Create a new connection pool.
-// A connection pool is much more efficient than creating a new client
-// for every query, as it manages a set of active connections.
+// Determine which database URL to use.
+// Jest automatically sets NODE_ENV to 'test' when running tests.
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+const connectionString = isTestEnvironment 
+  ? config.testDatabaseUrl 
+  : config.databaseUrl;
+
+// Add a check to prevent running tests without a test database configured.
+if (isTestEnvironment && !connectionString) {
+  throw new Error(
+    'TEST_DATABASE_URL is not set in the .env file. Please configure it to run tests.'
+  );
+}
+
 const pool = new Pool({
-  connectionString: config.databaseUrl,
+  connectionString,
 });
 
 /**
  * A centralized function to query the database.
- * This helps with logging and consistent error handling.
- * @param text The SQL query string.
- * @param params The parameters to pass to the SQL query.
- * @returns The result of the query.
  */
 export const query = (text: string, params?: any[]) => {
-  console.log('[db]: Executing query:', text);
+  // We can optionally disable logging during tests to keep the output clean.
+  if (!isTestEnvironment) {
+    console.log('[db]: Executing query:', text);
+  }
   return pool.query(text, params);
 };
 
