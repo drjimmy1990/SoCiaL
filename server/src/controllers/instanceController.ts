@@ -100,24 +100,40 @@ export const deleteInstanceController = async (req: AuthenticatedRequest, res: R
     const { instanceId } = req.params;
     const loggedInUser = req.user;
     if (!loggedInUser) {
-        res.status(401).json({ message: 'Authentication required' });
-        return;
+        return res.status(401).json({ message: 'Authentication required' });
     }
     try {
         const instance = await findAndVerifyInstanceOwner(instanceId, loggedInUser.id);
         if (!instance) {
-            res.status(403).json({ message: 'Forbidden: You do not own this instance or it does not exist.' });
-            return;
+            return res.status(403).json({ message: 'Forbidden: You do not own this instance or it does not exist.' });
         }
-        await deleteEvolutionInstance(instance.system_name);
+        
+        try {
+            // Attempt to delete from the provider first
+            await deleteEvolutionInstance(instance.system_name);
+        } catch (error) {
+            // --- THIS IS THE FIX ---
+            // If the error is a 404 from the provider, we can ignore it and proceed.
+            // Any other error should be re-thrown.
+            if (isAxiosError(error) && error.response?.status === 404) {
+                console.log(`[instanceController]: Instance '${instance.system_name}' not found on provider. Proceeding with local deletion.`);
+            } else {
+                // If it's another type of error, throw it to the outer catch block.
+                throw error;
+            }
+            // --- END OF FIX ---
+        }
+
+        // Whether it succeeded or was already gone, delete it from our database.
         await query('DELETE FROM instances WHERE id = $1 AND owner_id = $2', [instanceId, loggedInUser.id]);
+        
         res.status(200).json({ message: `Instance ${instance.display_name} deleted successfully.` });
+
     } catch (error) {
         console.error('[instanceController]: DB error deleting instance.', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({ message: 'An unexpected error occurred while deleting the instance.' });
     }
 };
-
 export const getConnectionStateController = async (req: AuthenticatedRequest, res: Response) => {
     const { instanceId } = req.params;
     const loggedInUser = req.user;
