@@ -10,12 +10,13 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LockResetIcon from '@mui/icons-material/LockReset';
+import EditIcon from '@mui/icons-material/Edit';
 
 // --- LOCAL IMPORTS ---
 import apiClient from '../../api/apiClient';
 import { Tool } from '../../types';
 
-// --- Type Definitions for this component ---
+// --- Type Definitions ---
 interface AdminUser {
   id: string;
   username: string;
@@ -37,18 +38,22 @@ const UserManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // State for Dialogs
-  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-
-  // State for Forms & Selected User
+  // Consolidated dialog state
+  const [dialogs, setDialogs] = useState({
+    permissions: false,
+    create: false,
+    delete: false,
+    password: false,
+    limit: false
+  });
+  
+  // State for forms & selections
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userPermissions, setUserPermissions] = useState<number[]>([]);
   const [createUserForm, setCreateUserForm] = useState(initialCreateState);
   const [createError, setCreateError] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [newInstanceLimit, setNewInstanceLimit] = useState('');
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -77,27 +82,27 @@ const UserManagement = () => {
     fetchData();
   }, [fetchUsers]);
 
-  // --- DIALOG HANDLERS ---
-  const handleOpenDialog = (dialog: 'permissions' | 'delete' | 'password', user: AdminUser) => {
-    setSelectedUser(user);
-    if (dialog === 'permissions') {
+  const handleOpenDialog = (dialog: keyof typeof dialogs, user: AdminUser | null = null) => {
+    if (user) setSelectedUser(user);
+    
+    if (dialog === 'permissions' && user) {
       apiClient.get<number[]>(`/admin/users/${user.id}/permissions`)
         .then(res => setUserPermissions(res.data))
         .catch(() => toast.error('Failed to fetch user permissions.'));
-      setIsPermissionsDialogOpen(true);
     }
-    if (dialog === 'delete') setIsDeleteDialogOpen(true);
-    if (dialog === 'password') setIsPasswordDialogOpen(true);
+    if (dialog === 'limit' && user) {
+      setNewInstanceLimit(String(user.instance_limit));
+    }
+    
+    setDialogs(prev => ({ ...prev, [dialog]: true }));
   };
 
   const handleCloseDialogs = () => {
-    setIsPermissionsDialogOpen(false);
-    setIsCreateDialogOpen(false);
-    setIsDeleteDialogOpen(false);
-    setIsPasswordDialogOpen(false);
+    setDialogs({ permissions: false, create: false, delete: false, password: false, limit: false });
     setSelectedUser(null);
     setNewPassword('');
     setCreateError(null);
+    setNewInstanceLimit('');
   };
 
   const handleCreateFormChange = (event: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
@@ -115,7 +120,6 @@ const UserManagement = () => {
     }
   };
 
-  // --- ACTION HANDLERS ---
   const handleCreateUser = async () => {
     setSaving(true);
     setCreateError(null);
@@ -127,7 +131,7 @@ const UserManagement = () => {
         toast.success(`User '${createUserForm.username}' created successfully!`);
         handleCloseDialogs();
         setCreateUserForm(initialCreateState);
-        fetchUsers(); // Refresh the user list
+        fetchUsers();
     } catch (err: any) {
         setCreateError(err.response?.data?.message || 'Failed to create user.');
     } finally {
@@ -180,6 +184,23 @@ const UserManagement = () => {
     }
   };
 
+  const handleUpdateInstanceLimit = async () => {
+    if (!selectedUser || newInstanceLimit === '') return;
+    setSaving(true);
+    try {
+      await apiClient.put(`/admin/users/${selectedUser.id}/instance-limit`, { 
+        instanceLimit: parseInt(newInstanceLimit, 10) 
+      });
+      toast.success(`Instance limit for '${selectedUser.username}' updated.`);
+      handleCloseDialogs();
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update limit.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error">{error}</Alert>;
 
@@ -187,7 +208,7 @@ const UserManagement = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h5" gutterBottom>Users</Typography>
-        <Button variant="contained" onClick={() => setIsCreateDialogOpen(true)}>+ Create New User</Button>
+        <Button variant="contained" onClick={() => handleOpenDialog('create')}>+ Create New User</Button>
       </Box>
       <TableContainer component={Paper}>
         <Table>
@@ -195,6 +216,7 @@ const UserManagement = () => {
             <TableRow>
               <TableCell>Username</TableCell>
               <TableCell>Role</TableCell>
+              <TableCell>Instance Limit</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -203,10 +225,12 @@ const UserManagement = () => {
               <TableRow key={user.id}>
                 <TableCell>{user.username}</TableCell>
                 <TableCell sx={{ textTransform: 'capitalize' }}>{user.role}</TableCell>
+                <TableCell>{user.instance_limit}</TableCell>
                 <TableCell align="right">
-                  <Button variant="outlined" size="small" sx={{ mr: 1 }} onClick={() => handleOpenDialog('permissions', user)}>Manage Permissions</Button>
-                  <Tooltip title="Change Password"><IconButton color="primary" onClick={() => handleOpenDialog('password', user)}><LockResetIcon /></IconButton></Tooltip>
-                  <Tooltip title="Delete User"><IconButton color="error" onClick={() => handleOpenDialog('delete', user)}><DeleteIcon /></IconButton></Tooltip>
+                  <Button variant="outlined" size="small" sx={{ mr: 1 }} onClick={() => handleOpenDialog('permissions', user)}>Permissions</Button>
+                  <Tooltip title="Edit Instance Limit"><IconButton size="small" onClick={() => handleOpenDialog('limit', user)}><EditIcon fontSize="inherit" /></IconButton></Tooltip>
+                  <Tooltip title="Change Password"><IconButton size="small" color="primary" onClick={() => handleOpenDialog('password', user)}><LockResetIcon fontSize="inherit" /></IconButton></Tooltip>
+                  <Tooltip title="Delete User"><IconButton size="small" color="error" onClick={() => handleOpenDialog('delete', user)}><DeleteIcon fontSize="inherit" /></IconButton></Tooltip>
                 </TableCell>
               </TableRow>
             ))}
@@ -215,7 +239,7 @@ const UserManagement = () => {
       </TableContainer>
 
       {/* Permissions Management Dialog */}
-      <Dialog open={isPermissionsDialogOpen} onClose={handleCloseDialogs} fullWidth maxWidth="xs">
+      <Dialog open={dialogs.permissions} onClose={handleCloseDialogs} fullWidth maxWidth="xs">
         <DialogTitle>Manage Permissions for {selectedUser?.username}</DialogTitle>
         <DialogContent>
           <Typography gutterBottom>Grant access to tools:</Typography>
@@ -236,7 +260,7 @@ const UserManagement = () => {
       </Dialog>
 
       {/* Create User Dialog */}
-      <Dialog open={isCreateDialogOpen} onClose={handleCloseDialogs} fullWidth maxWidth="xs">
+      <Dialog open={dialogs.create} onClose={handleCloseDialogs} fullWidth maxWidth="xs">
         <DialogTitle>Create New User</DialogTitle>
         <DialogContent>
             <TextField autoFocus margin="dense" name="username" label="Username" type="text" fullWidth value={createUserForm.username} onChange={handleCreateFormChange} required />
@@ -258,7 +282,7 @@ const UserManagement = () => {
       </Dialog>
       
       {/* Delete User Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onClose={handleCloseDialogs}>
+      <Dialog open={dialogs.delete} onClose={handleCloseDialogs}>
         <DialogTitle>Delete User</DialogTitle>
         <DialogContent><Typography>Are you sure you want to permanently delete the user <strong>{selectedUser?.username}</strong>? All of their data will be removed.</Typography></DialogContent>
         <DialogActions>
@@ -268,7 +292,7 @@ const UserManagement = () => {
       </Dialog>
 
       {/* Change Password Dialog */}
-      <Dialog open={isPasswordDialogOpen} onClose={handleCloseDialogs}>
+      <Dialog open={dialogs.password} onClose={handleCloseDialogs}>
         <DialogTitle>Change Password for {selectedUser?.username}</DialogTitle>
         <DialogContent>
             <TextField autoFocus margin="dense" name="newPassword" label="New Password" type="password" fullWidth value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
@@ -276,6 +300,21 @@ const UserManagement = () => {
         <DialogActions>
           <Button onClick={handleCloseDialogs}>Cancel</Button>
           <Button onClick={handleUpdatePassword} variant="contained" disabled={saving || newPassword.length < 6}>{saving ? <CircularProgress size={24} /> : 'Update Password'}</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Instance Limit Dialog */}
+      <Dialog open={dialogs.limit} onClose={handleCloseDialogs}>
+        <DialogTitle>Edit Instance Limit for {selectedUser?.username}</DialogTitle>
+        <DialogContent>
+            <TextField autoFocus margin="dense" name="newInstanceLimit" label="New Instance Limit" type="number" fullWidth
+              value={newInstanceLimit} onChange={(e) => setNewInstanceLimit(e.target.value)} required
+              InputProps={{ inputProps: { min: 0 } }}
+            />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialogs}>Cancel</Button>
+          <Button onClick={handleUpdateInstanceLimit} variant="contained" disabled={saving}>{saving ? <CircularProgress size={24} /> : 'Save Limit'}</Button>
         </DialogActions>
       </Dialog>
     </Box>

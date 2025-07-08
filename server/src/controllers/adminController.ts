@@ -308,3 +308,41 @@ export const updateUserPassword = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update user password.' });
     }
 };
+
+
+// --- NEW VALIDATION SCHEMA ---
+const updateUserInstanceLimitSchema = z.object({
+    instanceLimit: z.number().int().min(0, "Instance limit must be a non-negative number."),
+});
+
+
+// --- NEW FUNCTION ---
+/**
+ * Controller for an admin to update a user's instance limit.
+ */
+export const updateUserInstanceLimit = async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const validationResult = updateUserInstanceLimitSchema.safeParse(req.body);
+    if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid data provided.", errors: validationResult.error.flatten() });
+    }
+    const { instanceLimit } = validationResult.data;
+
+    try {
+        const updateResult = await query(
+            'UPDATE users SET instance_limit = $1 WHERE id = $2',
+            [instanceLimit, userId]
+        );
+
+        if (updateResult.rowCount === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json({ message: "User instance limit updated successfully." });
+
+    } catch (error) {
+        console.error(`[adminController]: Error updating instance limit for user ${userId}.`, error);
+        res.status(500).json({ message: 'Failed to update user instance limit.' });
+    }
+};
