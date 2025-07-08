@@ -314,6 +314,16 @@ These endpoints are for administrative tasks and are strictly protected.
     }
     ```
 
+#### `PUT /users/:userId/instance-limit`  *(<-- NEW)*
+-   **Description:** Updates the instance limit for a specific user.
+-   **Protection:** `Admin Only`
+-   **Request Body:**
+    ```json
+    {
+      "instanceLimit": 10
+    }
+    ```
+    
 #### `GET /users/:userId/permissions`
 -   **Description:** Retrieves an array of `tool_id`s that a specific user has permission to access.
 -   **Protection:** `Admin Only`
