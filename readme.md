@@ -2,7 +2,7 @@
 
 Welcome to the official documentation for the WhatsApp & Social Media SaaS Platform. This is a full-stack, multi-user, multi-tool application designed to provide a suite of automation tools for businesses and developers. Built on a robust and scalable architecture, the platform features a persistent PostgreSQL database, a secure Node.js backend API, and a dynamic, real-time React frontend.
 
-The application is architected to be extensible, allowing for the seamless addition of new tools and integrations in the future.
+The application is architected to be extensible, allowing for the seamless addition of new tools and integrations in the future. It includes a comprehensive admin dashboard for full user lifecycle management, permission control, and instance configuration.
 
 ---
 
@@ -300,6 +300,19 @@ These endpoints are for administrative tasks and are strictly protected.
 #### `GET /users`
 -   **Description:** Retrieves a list of all user accounts in the system.
 -   **Protection:** `Admin Only`
+#### `DELETE /users/:userId`  *(<-- NEW)*
+-   **Description:** Deletes a user account. This action is permanent and will cascade-delete all of their associated data (instances, campaigns, etc.). An admin cannot delete their own account.
+-   **Protection:** `Admin Only`
+
+#### `PUT /users/:userId/password`  *(<-- NEW)*
+-   **Description:** Updates the password for a specific user.
+-   **Protection:** `Admin Only`
+-   **Request Body:**
+    ```json
+    {
+      "password": "a_new_strong_password"
+    }
+    ```
 
 #### `GET /users/:userId/permissions`
 -   **Description:** Retrieves an array of `tool_id`s that a specific user has permission to access.

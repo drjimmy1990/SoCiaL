@@ -237,3 +237,74 @@ export const updateInstanceConfig = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to update instance configuration.' });
     }
 };
+
+
+// --- NEW FUNCTION ---
+/**
+ * Controller for an admin to delete a user account.
+ * Note: Our schema's ON DELETE CASCADE rules will handle deleting related data.
+ */
+export const deleteUser = async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const adminUserId = (req as any).user.id; // The ID of the admin performing the action
+
+    // A critical safety check to prevent an admin from deleting their own account
+    if (userId === adminUserId) {
+        return res.status(403).json({ message: "Administrators cannot delete their own account." });
+    }
+
+    try {
+        const deleteResult = await query('DELETE FROM users WHERE id = $1', [userId]);
+
+        if (deleteResult.rowCount === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json({ message: "User deleted successfully." });
+
+    } catch (error) {
+        console.error(`[adminController]: Error deleting user ${userId}.`, error);
+        res.status(500).json({ message: 'Failed to delete user.' });
+    }
+};
+
+
+
+const updateUserPasswordSchema = z.object({
+    password: z.string().min(6, "Password must be at least 6 characters long."),
+});
+
+
+// --- NEW FUNCTION ---
+/**
+ * Controller for an admin to update a user's password.
+ */
+export const updateUserPassword = async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const validationResult = updateUserPasswordSchema.safeParse(req.body);
+    if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid data provided.", errors: validationResult.error.flatten() });
+    }
+    const { password } = validationResult.data;
+
+    try {
+        // Hash the new password
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const updateResult = await query(
+            'UPDATE users SET password_hash = $1 WHERE id = $2',
+            [passwordHash, userId]
+        );
+
+        if (updateResult.rowCount === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json({ message: "User password updated successfully." });
+
+    } catch (error) {
+        console.error(`[adminController]: Error updating password for user ${userId}.`, error);
+        res.status(500).json({ message: 'Failed to update user password.' });
+    }
+};

@@ -5,7 +5,9 @@ import {
   getUserPermissions,
   updateUserPermissions,
   getAllSystemInstances,
-  updateInstanceConfig // <-- Import the new controller function
+  updateInstanceConfig,
+  deleteUser,
+  updateUserPassword // <-- Import the new controller function
 } from '../controllers/adminController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { adminMiddleware } from '../middleware/adminMiddleware';
@@ -20,6 +22,8 @@ router.use(authMiddleware as RouteHandler, adminMiddleware as RouteHandler);
 // --- User management routes ---
 router.post('/users', createUser as RouteHandler);
 router.get('/users', getAllUsers as RouteHandler);
+router.delete('/users/:userId', deleteUser as RouteHandler);
+router.put('/users/:userId/password', updateUserPassword as RouteHandler);
 
 // --- User permission management routes ---
 router.get('/users/:userId/permissions', getUserPermissions as RouteHandler);
