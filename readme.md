@@ -724,4 +724,4 @@ This directory is for complex, long-running, or reusable business logic that sho
 -   **`schema.sql`**: The single, authoritative source of truth for the entire database structure. Any change to the database tables **must** be reflected here.
 ```
 
-I have completed the detailed file structure guide. Please let me know what you would like to do next.
+I have completed the detailed file structure guide. Please let me know what you would like to do next
